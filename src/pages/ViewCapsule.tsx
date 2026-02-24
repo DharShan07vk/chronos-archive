@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { gsap } from "gsap";
+import { ImageIcon, VideoIcon } from "lucide-react";
 import { useCapsules } from "@/store/capsuleStore";
 import BrutalistButton from "@/components/BrutalistButton";
 
@@ -75,50 +76,104 @@ const ViewCapsule: React.FC = () => {
       </nav>
 
       {/* Content */}
-      <div className="content-reveal grid grid-cols-1 md:grid-cols-2 min-h-[calc(100vh-65px)]">
-        {/* Left: Meta */}
-        <div className="border-r-0 md:border-r-2 border-foreground p-8 md:p-12 flex flex-col justify-center">
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground mb-6">File Record</p>
+      <div className="content-reveal">
+        <div className="grid grid-cols-1 md:grid-cols-2 min-h-[calc(100vh-65px)]">
+          {/* Left: Meta */}
+          <div className="border-r-0 md:border-r-2 border-foreground p-8 md:p-12 flex flex-col justify-center">
+            <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground mb-6">File Record</p>
 
-          <div className="space-y-6">
-            <div className="border-b border-foreground pb-3">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Document ID</span>
-              <span className="font-mono text-lg">#{capsule.id}</span>
-            </div>
-            <div className="border-b border-foreground pb-3">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Title</span>
-              <span className="font-heading text-2xl uppercase">{capsule.title}</span>
-            </div>
-            <div className="border-b border-foreground pb-3">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Date Created</span>
-              <span className="font-mono text-lg">{capsule.createdAt.toLocaleDateString()}</span>
-            </div>
-            <div className="border-b border-foreground pb-3">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Date Opened</span>
-              <span className="font-mono text-lg">{new Date().toLocaleDateString()}</span>
-            </div>
-            <div className="border-b border-foreground pb-3">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Weather (Archived)</span>
-              <span className="font-mono text-lg">{capsule.weather || "N/A"}</span>
-            </div>
-            {capsule.shareEmail && (
+            <div className="space-y-6">
               <div className="border-b border-foreground pb-3">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Shared With</span>
-                <span className="font-mono text-lg">{capsule.shareEmail}</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Document ID</span>
+                <span className="font-mono text-lg">#{capsule.id}</span>
+              </div>
+              <div className="border-b border-foreground pb-3">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Title</span>
+                <span className="font-heading text-2xl uppercase">{capsule.title}</span>
+              </div>
+              <div className="border-b border-foreground pb-3">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Date Created</span>
+                <span className="font-mono text-lg">{capsule.createdAt.toLocaleDateString()}</span>
+              </div>
+              <div className="border-b border-foreground pb-3">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Date Opened</span>
+                <span className="font-mono text-lg">{new Date().toLocaleDateString()}</span>
+              </div>
+              <div className="border-b border-foreground pb-3">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Weather (Archived)</span>
+                <span className="font-mono text-lg">{capsule.weather || "N/A"}</span>
+              </div>
+              {capsule.shareEmail && (
+                <div className="border-b border-foreground pb-3">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Shared With</span>
+                  <span className="font-mono text-lg">{capsule.shareEmail}</span>
+                </div>
+              )}
+              <div className="border-b border-foreground pb-3">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Attachments</span>
+                <span className="font-mono text-lg">
+                  {capsule.photos.length} photo{capsule.photos.length !== 1 ? "s" : ""}, {capsule.videos.length} video{capsule.videos.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-8 border-2 border-accent px-4 py-2 inline-block rotate-[-3deg] font-heading text-xl text-accent self-start">
+              OPENED
+            </div>
+          </div>
+
+          {/* Right: Content + Media */}
+          <div className="p-8 md:p-12 bg-card overflow-y-auto">
+            {/* Text Content */}
+            <div className="border-2 border-foreground p-8 md:p-12 max-w-lg w-full bg-card brutalist-shadow mb-8">
+              <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground mb-6">Capsule Contents</p>
+              <p className="font-mono text-base leading-relaxed whitespace-pre-wrap">{capsule.content}</p>
+            </div>
+
+            {/* Photos */}
+            {capsule.photos.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <ImageIcon className="w-4 h-4 text-accent" />
+                  <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                    Archived Photos ({capsule.photos.length})
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {capsule.photos.map((photo, i) => (
+                    <div key={i} className="border-2 border-foreground brutalist-shadow overflow-hidden">
+                      <img src={photo.url} alt={photo.name} className="w-full h-48 object-cover" />
+                      <p className="font-mono text-[10px] p-2 text-muted-foreground truncate">{photo.name}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
 
-          <div className="mt-8 border-2 border-accent px-4 py-2 inline-block rotate-[-3deg] font-heading text-xl text-accent self-start">
-            OPENED
-          </div>
-        </div>
-
-        {/* Right: Content */}
-        <div className="p-8 md:p-12 flex items-center justify-center bg-card">
-          <div className="border-2 border-foreground p-8 md:p-12 max-w-lg w-full bg-card brutalist-shadow">
-            <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground mb-6">Capsule Contents</p>
-            <p className="font-mono text-base leading-relaxed whitespace-pre-wrap">{capsule.content}</p>
+            {/* Videos */}
+            {capsule.videos.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <VideoIcon className="w-4 h-4 text-accent" />
+                  <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                    Archived Videos ({capsule.videos.length})
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {capsule.videos.map((video, i) => (
+                    <div key={i} className="border-2 border-foreground brutalist-shadow overflow-hidden">
+                      <video
+                        src={video.url}
+                        controls
+                        className="w-full"
+                        preload="metadata"
+                      />
+                      <p className="font-mono text-[10px] p-2 text-muted-foreground truncate">{video.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
