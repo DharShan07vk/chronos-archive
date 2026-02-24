@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 
+export interface MediaFile {
+  name: string;
+  type: string;
+  url: string;
+}
+
 export interface Capsule {
   id: string;
   title: string;
@@ -9,6 +15,8 @@ export interface Capsule {
   shareEmail?: string;
   weather?: string;
   isLocked: boolean;
+  photos: MediaFile[];
+  videos: MediaFile[];
 }
 
 interface CapsuleContextType {
@@ -29,6 +37,8 @@ const MOCK_CAPSULES: Capsule[] = [
     unlockAt: new Date("2027-01-15"),
     weather: "Cloudy, 12°C",
     isLocked: true,
+    photos: [],
+    videos: [],
   },
   {
     id: "CP-2026-002",
@@ -38,6 +48,8 @@ const MOCK_CAPSULES: Capsule[] = [
     unlockAt: new Date("2026-02-10"),
     weather: "Sunny, 8°C",
     isLocked: false,
+    photos: [],
+    videos: [],
   },
   {
     id: "CP-2026-003",
@@ -47,6 +59,8 @@ const MOCK_CAPSULES: Capsule[] = [
     unlockAt: new Date("2026-09-01"),
     weather: "Rainy, 6°C",
     isLocked: true,
+    photos: [],
+    videos: [],
   },
   {
     id: "CP-2026-004",
@@ -57,6 +71,8 @@ const MOCK_CAPSULES: Capsule[] = [
     shareEmail: "friend@example.com",
     weather: "Overcast, 10°C",
     isLocked: false,
+    photos: [],
+    videos: [],
   },
 ];
 

@@ -3,9 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import BrutalistButton from "@/components/BrutalistButton";
 import { useAuth } from "@/store/authStore";
 
-const Login: React.FC = () => {
+const Register: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -24,12 +25,26 @@ const Login: React.FC = () => {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="border-2 border-foreground bg-card p-8 md:p-10 brutalist-shadow">
-            <h1 className="text-4xl md:text-5xl mb-2">LOG IN</h1>
+            <h1 className="text-4xl md:text-5xl mb-2">REGISTER</h1>
             <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground mb-8">
-              Access your archive
+              Create your archive
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground block mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="John Doe"
+                  className="brutalist-input w-full text-foreground"
+                  required
+                />
+              </div>
+
               <div>
                 <label className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground block mb-2">
                   Email
@@ -59,13 +74,13 @@ const Login: React.FC = () => {
               </div>
 
               <BrutalistButton type="submit" variant="default" fullWidth className="mt-4">
-                ENTER THE ARCHIVE
+                CREATE ARCHIVE ACCOUNT
               </BrutalistButton>
             </form>
 
             <p className="font-mono text-xs text-muted-foreground mt-6 text-center">
-              No account?{" "}
-              <Link to="/register" className="text-accent underline">Register here</Link>
+              Already have an account?{" "}
+              <Link to="/login" className="text-accent underline">Log in</Link>
             </p>
           </div>
         </div>
@@ -74,4 +89,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Register;

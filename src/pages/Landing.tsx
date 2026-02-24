@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/store/authStore";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Lock, Clock, Archive, Send, Shield, Eye } from "lucide-react";
@@ -46,6 +47,7 @@ const features = [
 ];
 
 const Landing: React.FC = () => {
+  const { isLoggedIn, logout } = useAuth();
   const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,12 +67,23 @@ const Landing: React.FC = () => {
           Chronos
         </Link>
         <div className="flex gap-4">
-          <Link to="/login">
-            <BrutalistButton variant="outline" className="text-sm px-4 py-2">Login</BrutalistButton>
-          </Link>
-          <Link to="/create">
-            <BrutalistButton variant="accent" className="text-sm px-4 py-2">Create Capsule</BrutalistButton>
-          </Link>
+          {isLoggedIn ? (
+            <>
+              <Link to="/dashboard">
+                <BrutalistButton variant="outline" className="text-sm px-4 py-2">Dashboard</BrutalistButton>
+              </Link>
+              <BrutalistButton variant="accent" className="text-sm px-4 py-2" onClick={logout}>Logout</BrutalistButton>
+            </>
+          ) : (
+            <>
+              <Link to="/login">
+                <BrutalistButton variant="outline" className="text-sm px-4 py-2">Login</BrutalistButton>
+              </Link>
+              <Link to="/create">
+                <BrutalistButton variant="accent" className="text-sm px-4 py-2">Create Capsule</BrutalistButton>
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 

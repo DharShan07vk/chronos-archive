@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ImagePlus, VideoIcon, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import BrutalistButton from "@/components/BrutalistButton";
 import { useCapsules } from "@/store/capsuleStore";
+import { MediaFile } from "@/store/capsuleStore";
 import { cn } from "@/lib/utils";
 
 const CreateCapsule: React.FC = () => {
@@ -15,6 +16,42 @@ const CreateCapsule: React.FC = () => {
   const [content, setContent] = useState("");
   const [unlockDate, setUnlockDate] = useState<Date>();
   const [shareEmail, setShareEmail] = useState("");
+  const [photos, setPhotos] = useState<MediaFile[]>([]);
+  const [videos, setVideos] = useState<MediaFile[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newPhotos: MediaFile[] = Array.from(files).map((file) => ({
+      name: file.name,
+      type: file.type,
+      url: URL.createObjectURL(file),
+    }));
+    setPhotos((prev) => [...prev, ...newPhotos]);
+    e.target.value = "";
+  };
+
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newVideos: MediaFile[] = Array.from(files).map((file) => ({
+      name: file.name,
+      type: file.type,
+      url: URL.createObjectURL(file),
+    }));
+    setVideos((prev) => [...prev, ...newVideos]);
+    e.target.value = "";
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeVideo = (index: number) => {
+    setVideos((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +62,8 @@ const CreateCapsule: React.FC = () => {
       unlockAt: unlockDate,
       shareEmail: shareEmail || undefined,
       weather: "Partly cloudy, 14°C",
+      photos,
+      videos,
     });
     navigate("/dashboard");
   };
@@ -76,6 +115,88 @@ const CreateCapsule: React.FC = () => {
               className="brutalist-input w-full resize-none text-foreground"
               required
             />
+          </div>
+
+          {/* Photo Upload */}
+          <div>
+            <label className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground block mb-2">
+              Photos (optional)
+            </label>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handlePhotoUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              className="brutalist-input w-full text-left flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ImagePlus className="w-4 h-4" />
+              Click to upload photos...
+            </button>
+            {photos.length > 0 && (
+              <div className="grid grid-cols-3 gap-3 mt-4">
+                {photos.map((photo, i) => (
+                  <div key={i} className="relative border-2 border-foreground brutalist-shadow group">
+                    <img src={photo.url} alt={photo.name} className="w-full h-24 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="absolute top-1 right-1 bg-foreground text-background w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    <p className="font-mono text-[10px] p-1 truncate text-muted-foreground">{photo.name}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Video Upload */}
+          <div>
+            <label className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground block mb-2">
+              Videos (optional)
+            </label>
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/*"
+              multiple
+              onChange={handleVideoUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => videoInputRef.current?.click()}
+              className="brutalist-input w-full text-left flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <VideoIcon className="w-4 h-4" />
+              Click to upload videos...
+            </button>
+            {videos.length > 0 && (
+              <div className="space-y-3 mt-4">
+                {videos.map((video, i) => (
+                  <div key={i} className="border-2 border-foreground brutalist-shadow p-3 flex items-center justify-between group">
+                    <div className="flex items-center gap-2">
+                      <VideoIcon className="w-4 h-4 text-accent" />
+                      <span className="font-mono text-sm truncate max-w-[200px]">{video.name}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeVideo(i)}
+                      className="bg-foreground text-background w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Date Picker */}
