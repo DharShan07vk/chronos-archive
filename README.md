@@ -1,73 +1,80 @@
-# Welcome to your Lovable project
+# Chronos Archive
 
-## Project info
+A brutalist-aesthetic digital time capsule app — seal your memories, thoughts, and media behind a date lock and rediscover them when the moment arrives.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- **Time-Locked Capsules** — set any future unlock date; content stays sealed until then
+- **Rich Content** — attach text, photos, and videos to each capsule
+- **Share** — send capsules to others via email
+- **Weather Snapshot** — optionally record the weather at the time of creation
+- **Dashboard** — at-a-glance view of all your capsules with lock/unlock status
+- **Authentication** — private capsule library per user (register & login)
+- **GSAP Animations** — smooth scroll-triggered transitions and a live millisecond clock on the landing page
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+| Layer | Technology |
+|---|---|
+| Framework | React 18 + TypeScript |
+| Build | Vite |
+| Styling | Tailwind CSS + shadcn/ui (Radix UI) |
+| Routing | React Router v6 |
+| Forms | React Hook Form + Zod |
+| Animations | GSAP + ScrollTrigger |
+| State | React Context API |
+| Data Fetching | TanStack Query |
+| Testing | Vitest + Testing Library |
+| Package Manager | Bun |
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Project Structure
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+src/
+├── components/       # Shared UI & brutalist design primitives
+│   └── ui/           # shadcn/ui component library
+├── hooks/            # Custom React hooks
+├── lib/              # Utility functions
+├── pages/            # Route-level page components
+│   ├── Landing.tsx
+│   ├── Login.tsx
+│   ├── Register.tsx
+│   ├── Dashboard.tsx
+│   ├── CreateCapsule.tsx
+│   └── ViewCapsule.tsx
+├── store/            # Context-based global state
+│   ├── authStore.tsx
+│   └── capsuleStore.tsx
+└── test/             # Test setup and example tests
 ```
 
-**Edit a file directly in GitHub**
+## Getting Started
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+**Prerequisites:** [Node.js](https://nodejs.org) or [Bun](https://bun.sh)
 
-**Use GitHub Codespaces**
+```sh
+# Clone the repository
+git clone <YOUR_GIT_URL>
+cd chronos-archive
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Install dependencies
+bun install        # or: npm install
 
-## What technologies are used for this project?
+# Start the development server
+bun run dev        # or: npm run dev
+```
 
-This project is built with:
+The app will be available at `http://localhost:5173`.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Available Scripts
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+| Command | Description |
+|---|---|
+| `bun run dev` | Start development server |
+| `bun run build` | Production build |
+| `bun run preview` | Preview production build locally |
+| `bun run lint` | Run ESLint |
+| `bun run test` | Run tests (Vitest) |
+| `bun run test:watch` | Run tests in watch mode |
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
