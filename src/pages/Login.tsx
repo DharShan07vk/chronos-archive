@@ -2,17 +2,19 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import BrutalistButton from "@/components/BrutalistButton";
 import { useAuth } from "@/store/authStore";
-
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login(email);
-    navigate("/dashboard");
+    setLoading(true);
+    const success = await login(email, password);
+    setLoading(false);
+    if (success) navigate("/dashboard");
   };
 
   return (
@@ -58,8 +60,8 @@ const Login: React.FC = () => {
                 />
               </div>
 
-              <BrutalistButton type="submit" variant="default" fullWidth className="mt-4">
-                ENTER THE ARCHIVE
+              <BrutalistButton type="submit" variant="default" fullWidth className="mt-4" disabled={loading}>
+                {loading ? "LOGGING IN..." : "ENTER THE ARCHIVE"}
               </BrutalistButton>
             </form>
 

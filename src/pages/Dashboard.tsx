@@ -8,7 +8,7 @@ import { useCapsules } from "@/store/capsuleStore";
 type FilterType = "all" | "locked" | "open";
 
 const Dashboard: React.FC = () => {
-  const { capsules } = useCapsules();
+  const { capsules, loading } = useCapsules();
   const [filter, setFilter] = useState<FilterType>("all");
 
   const filtered = capsules.filter((c) => {
@@ -83,7 +83,17 @@ const Dashboard: React.FC = () => {
             <span className="font-mono text-sm text-muted-foreground">{filtered.length} results</span>
           </div>
 
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="border-2 border-foreground p-6 brutalist-shadow animate-pulse">
+                  <div className="h-5 bg-muted rounded w-1/2 mb-4" />
+                  <div className="h-3 bg-muted rounded w-full mb-2" />
+                  <div className="h-3 bg-muted rounded w-3/4" />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="border-2 border-foreground p-12 text-center brutalist-shadow">
               <p className="font-heading text-2xl mb-4">NO CAPSULES FOUND</p>
               <p className="font-mono text-sm text-muted-foreground mb-6">Create your first time capsule to get started.</p>

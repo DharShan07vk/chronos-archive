@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { authFetch } from "../api/api";
+import { toast } from "sonner";
 
 export interface MediaFile {
   name: string;
@@ -21,85 +23,114 @@ export interface Capsule {
 
 interface CapsuleContextType {
   capsules: Capsule[];
-  addCapsule: (capsule: Omit<Capsule, "id" | "createdAt" | "isLocked">) => void;
+  loading: boolean;
+  fetchCapsules: () => Promise<void>;
+  uploadFiles: (files: File[]) => Promise<MediaFile[]>;
+  addCapsule: (capsule: Omit<Capsule, "id" | "createdAt" | "isLocked">) => Promise<boolean>;
   getCapsule: (id: string) => Capsule | undefined;
   unlockCapsule: (id: string) => void;
 }
 
 const CapsuleContext = createContext<CapsuleContextType | null>(null);
 
-const MOCK_CAPSULES: Capsule[] = [
-  {
-    id: "CP-2026-001",
-    title: "Letter to Future Me",
-    content: "Dear future self, I hope you've learned to stop procrastinating. Remember that time you stayed up until 3am building a time capsule app? That was tonight. I hope it was worth it. The coffee was strong and the code was clean.",
-    createdAt: new Date("2026-01-15"),
-    unlockAt: new Date("2027-01-15"),
-    weather: "Cloudy, 12°C",
-    isLocked: true,
-    photos: [],
-    videos: [],
-  },
-  {
-    id: "CP-2026-002",
-    title: "Project Launch Notes",
-    content: "We shipped v1.0 today. The team was incredible. Remember this feeling of accomplishment when things get hard.",
-    createdAt: new Date("2026-02-01"),
-    unlockAt: new Date("2026-02-10"),
-    weather: "Sunny, 8°C",
-    isLocked: false,
-    photos: [],
-    videos: [],
-  },
-  {
-    id: "CP-2026-003",
-    title: "Summer Goals 2026",
-    content: "1. Learn to surf. 2. Read 12 books. 3. Visit Tokyo. 4. Build something meaningful.",
-    createdAt: new Date("2026-02-10"),
-    unlockAt: new Date("2026-09-01"),
-    weather: "Rainy, 6°C",
-    isLocked: true,
-    photos: [],
-    videos: [],
-  },
-  {
-    id: "CP-2026-004",
-    title: "Gratitude Archive",
-    content: "Today I'm grateful for: morning coffee, good music, the sound of rain, and the people who believe in me.",
-    createdAt: new Date("2026-02-14"),
-    unlockAt: new Date("2026-02-14"),
-    shareEmail: "friend@example.com",
-    weather: "Overcast, 10°C",
-    isLocked: false,
-    photos: [],
-    videos: [],
-  },
-];
-
-let counter = 5;
+const mapRaw = (raw: any): Capsule => {
+  console.log("[capsule] raw item from backend:", raw); // remove once field names confirmed
+  return {
+    ...raw,
+    // handle both MongoDB _id and numeric/string id
+    id: String(raw.id ?? raw._id ?? raw.capsuleId ?? ""),
+    // handle camelCase and snake_case date fields
+    createdAt: new Date(raw.createdAt ?? raw.created_at),
+    unlockAt:  new Date(raw.unlockAt  ?? raw.unlock_at  ?? raw.openAt ?? raw.open_at),
+    isLocked: raw.isLocked ?? raw.is_locked ?? new Date(raw.unlockAt ?? raw.unlock_at ?? raw.openAt) > new Date(),
+    photos: raw.photos ?? [],
+    videos: raw.videos ?? [],
+  };
+};
 
 export const CapsuleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [capsules, setCapsules] = useState<Capsule[]>(MOCK_CAPSULES);
+  const [capsules, setCapsules] = useState<Capsule[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const addCapsule = useCallback((data: Omit<Capsule, "id" | "createdAt" | "isLocked">) => {
-    const id = `CP-2026-${String(counter++).padStart(3, "0")}`;
-    const newCapsule: Capsule = {
-      ...data,
-      id,
-      createdAt: new Date(),
-      isLocked: data.unlockAt > new Date(),
-    };
-    setCapsules((prev) => [newCapsule, ...prev]);
+  const fetchCapsules = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await authFetch("/capsules/");
+      if (res.ok) {
+        const body = await res.json();
+        console.log("[capsule] fetchCapsules raw response:", body); // remove once confirmed
+        // handle bare array OR { data: [...] } OR { capsules: [...] } wrapper
+        const list: any[] = Array.isArray(body)
+          ? body
+          : (body?.data ?? body?.capsules ?? []);
+        setCapsules(list.map(mapRaw));
+      } else {
+        toast.error("Failed to load capsules.");
+      }
+    } catch {
+      toast.error("Network error. Could not load capsules.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const getCapsule = useCallback((id: string) => capsules.find((c) => c.id === id), [capsules]);
+  useEffect(() => {
+    fetchCapsules();
+  }, [fetchCapsules]);
+
+  const addCapsule = useCallback(async (data: Omit<Capsule, "id" | "createdAt" | "isLocked">): Promise<boolean> => {
+    try {
+      const res = await authFetch("/capsules/new", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const created = mapRaw(await res.json());
+        setCapsules((prev) => [created, ...prev]);
+        return true;
+      } else {
+        toast.error("Failed to create capsule.");
+        return false;
+      }
+    } catch {
+      toast.error("Network error. Could not create capsule.");
+      return false;
+    }
+  }, []);
+
+  const uploadFiles = useCallback(async (files: File[]): Promise<MediaFile[]> => {
+    if (files.length === 0) return [];
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files", f));
+    try {
+      const res = await authFetch("/capsules/upload", {
+        method: "POST",
+        body: formData,
+       
+      });
+      if (res.ok) {
+        return await res.json(); 
+      }
+      toast.error("Failed to upload files.");
+      return [];
+    } catch {
+      toast.error("Network error. Could not upload files.");
+      return [];
+    }
+  }, []);
+
+  const getCapsule = useCallback(
+    (id: string) => capsules.find((c) => String(c.id) === String(id)),
+    [capsules]
+  );
 
   const unlockCapsule = useCallback((id: string) => {
     setCapsules((prev) => prev.map((c) => (c.id === id ? { ...c, isLocked: false } : c)));
   }, []);
 
   return (
-    <CapsuleContext.Provider value={{ capsules, addCapsule, getCapsule, unlockCapsule }}>
+    <CapsuleContext.Provider value={{ capsules, loading, fetchCapsules, uploadFiles, addCapsule, getCapsule, unlockCapsule }}>
       {children}
     </CapsuleContext.Provider>
   );
@@ -110,3 +141,5 @@ export const useCapsules = () => {
   if (!ctx) throw new Error("useCapsules must be used within CapsuleProvider");
   return ctx;
 };
+
+

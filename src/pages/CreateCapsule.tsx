@@ -6,28 +6,37 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import BrutalistButton from "@/components/BrutalistButton";
 import { useCapsules } from "@/store/capsuleStore";
-import { MediaFile } from "@/store/capsuleStore";
 import { cn } from "@/lib/utils";
+
+
+interface LocalMedia {
+  file: File;
+  name: string;
+  type: string;
+  preview: string;
+}
 
 const CreateCapsule: React.FC = () => {
   const navigate = useNavigate();
-  const { addCapsule } = useCapsules();
+  const { addCapsule, uploadFiles } = useCapsules();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [unlockDate, setUnlockDate] = useState<Date>();
   const [shareEmail, setShareEmail] = useState("");
-  const [photos, setPhotos] = useState<MediaFile[]>([]);
-  const [videos, setVideos] = useState<MediaFile[]>([]);
+  const [photos, setPhotos] = useState<LocalMedia[]>([]);
+  const [videos, setVideos] = useState<LocalMedia[]>([]);
+  const [loading, setLoading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    const newPhotos: MediaFile[] = Array.from(files).map((file) => ({
+    const newPhotos: LocalMedia[] = Array.from(files).map((file) => ({
+      file,
       name: file.name,
       type: file.type,
-      url: URL.createObjectURL(file),
+      preview: URL.createObjectURL(file),
     }));
     setPhotos((prev) => [...prev, ...newPhotos]);
     e.target.value = "";
@@ -36,10 +45,11 @@ const CreateCapsule: React.FC = () => {
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    const newVideos: MediaFile[] = Array.from(files).map((file) => ({
+    const newVideos: LocalMedia[] = Array.from(files).map((file) => ({
+      file,
       name: file.name,
       type: file.type,
-      url: URL.createObjectURL(file),
+      preview: URL.createObjectURL(file),
     }));
     setVideos((prev) => [...prev, ...newVideos]);
     e.target.value = "";
@@ -53,19 +63,27 @@ const CreateCapsule: React.FC = () => {
     setVideos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !content || !unlockDate) return;
-    addCapsule({
+    setLoading(true);
+    // Step 1 — upload actual files and get real server URLs
+    const [uploadedPhotos, uploadedVideos] = await Promise.all([
+      uploadFiles(photos.map((p) => p.file)),
+      uploadFiles(videos.map((v) => v.file)),
+    ]);
+    // Step 2 — create the capsule with real URLs
+    const success = await addCapsule({
       title,
       content,
       unlockAt: unlockDate,
       shareEmail: shareEmail || undefined,
-      weather: "Partly cloudy, 14°C",
-      photos,
-      videos,
+      weather: "Partly cloudy, 14\u00b0C",
+      photos: uploadedPhotos,
+      videos: uploadedVideos,
     });
-    navigate("/dashboard");
+    setLoading(false);
+    if (success) navigate("/dashboard");
   };
 
   return (
@@ -142,7 +160,7 @@ const CreateCapsule: React.FC = () => {
               <div className="grid grid-cols-3 gap-3 mt-4">
                 {photos.map((photo, i) => (
                   <div key={i} className="relative border-2 border-foreground brutalist-shadow group">
-                    <img src={photo.url} alt={photo.name} className="w-full h-24 object-cover" />
+                    <img src={photo.preview} alt={photo.name} className="w-full h-24 object-cover" />
                     <button
                       type="button"
                       onClick={() => removePhoto(i)}
@@ -248,8 +266,8 @@ const CreateCapsule: React.FC = () => {
           </div>
 
           {/* Submit */}
-          <BrutalistButton type="submit" variant="accent" fullWidth className="text-xl py-5 mt-4">
-            ARCHIVE THIS MOMENT
+          <BrutalistButton type="submit" variant="accent" fullWidth className="text-xl py-5 mt-4" disabled={loading}>
+            {loading ? "UPLOADING & ARCHIVING..." : "ARCHIVE THIS MOMENT"}
           </BrutalistButton>
         </form>
       </div>

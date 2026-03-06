@@ -2,18 +2,20 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import BrutalistButton from "@/components/BrutalistButton";
 import { useAuth } from "@/store/authStore";
-
 const Register: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { register } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login(email);
-    navigate("/dashboard");
+    setLoading(true);
+    const success = await register(email, password, name);
+    setLoading(false);
+    if (success) navigate("/dashboard");
   };
 
   return (
@@ -73,8 +75,8 @@ const Register: React.FC = () => {
                 />
               </div>
 
-              <BrutalistButton type="submit" variant="default" fullWidth className="mt-4">
-                CREATE ARCHIVE ACCOUNT
+              <BrutalistButton type="submit" variant="default" fullWidth className="mt-4" disabled={loading}>
+                {loading ? "CREATING ACCOUNT..." : "CREATE ARCHIVE ACCOUNT"}
               </BrutalistButton>
             </form>
 
