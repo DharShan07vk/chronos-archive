@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { authFetch } from "../api/api";
+import { ApiRequestError, apiRequest } from "../api/api";
 import { toast } from "sonner";
 
 export interface MediaFile {
@@ -21,17 +21,44 @@ export interface Capsule {
   videos: MediaFile[];
 }
 
+export interface CreateCapsuleInput {
+  title: string;
+  content: string;
+  unlockAt: Date;
+  shareEmail?: string;
+  weather?: string;
+  photos: MediaFile[];
+  videos: MediaFile[];
+  requireMedia?: boolean;
+}
+
 interface CapsuleContextType {
   capsules: Capsule[];
   loading: boolean;
   fetchCapsules: () => Promise<void>;
   uploadFiles: (files: File[]) => Promise<MediaFile[]>;
-  addCapsule: (capsule: Omit<Capsule, "id" | "createdAt" | "isLocked">) => Promise<boolean>;
+  addCapsule: (capsule: CreateCapsuleInput) => Promise<boolean>;
   getCapsule: (id: string) => Capsule | undefined;
   unlockCapsule: (id: string) => void;
 }
 
 const CapsuleContext = createContext<CapsuleContextType | null>(null);
+
+const getCapsuleErrorMessage = (error: ApiRequestError, fallback: string): string => {
+  if (error.code === "FILE_SIZE_LIMIT_EXCEEDED") {
+    return error.message || "Video/photo must be 50MB or smaller.";
+  }
+  if (error.code === "MEDIA_REQUIRED") {
+    return error.message || "Media upload failed. Please re-upload before creating capsule.";
+  }
+  if (error.code === "MEDIA_FILE_NOT_FOUND") {
+    return error.message || "Some uploaded media files were not found on the server. Please re-upload.";
+  }
+  if (error.code === "INVALID_REQUEST_PAYLOAD") {
+    return error.message || "Please check all required fields and try again.";
+  }
+  return error.message || fallback;
+};
 
 const mapRaw = (raw: any): Capsule => {
   console.log("[capsule] raw item from backend:", raw); // remove once field names confirmed
@@ -55,20 +82,15 @@ export const CapsuleProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const fetchCapsules = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await authFetch("/capsules/");
-      if (res.ok) {
-        const body = await res.json();
-        console.log("[capsule] fetchCapsules raw response:", body); // remove once confirmed
-        // handle bare array OR { data: [...] } OR { capsules: [...] } wrapper
-        const list: any[] = Array.isArray(body)
-          ? body
-          : (body?.data ?? body?.capsules ?? []);
-        setCapsules(list.map(mapRaw));
+      const listResult = await apiRequest<any[] | { capsules?: any[] }>("/capsules/");
+      const list = Array.isArray(listResult) ? listResult : listResult?.capsules ?? [];
+      setCapsules(list.map(mapRaw));
+    } catch (error) {
+      if (error instanceof ApiRequestError) {
+        toast.error(error.message || "Failed to load capsules.");
       } else {
-        toast.error("Failed to load capsules.");
+        toast.error("Network error. Could not load capsules.");
       }
-    } catch {
-      toast.error("Network error. Could not load capsules.");
     } finally {
       setLoading(false);
     }
@@ -78,23 +100,23 @@ export const CapsuleProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fetchCapsules();
   }, [fetchCapsules]);
 
-  const addCapsule = useCallback(async (data: Omit<Capsule, "id" | "createdAt" | "isLocked">): Promise<boolean> => {
+  const addCapsule = useCallback(async (data: CreateCapsuleInput): Promise<boolean> => {
     try {
-      const res = await authFetch("/capsules/new", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) {
-        const created = mapRaw(await res.json());
-        setCapsules((prev) => [created, ...prev]);
-        return true;
+      const created = mapRaw(
+        await apiRequest<any>("/capsules/new", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        })
+      );
+      setCapsules((prev) => [created, ...prev]);
+      return true;
+    } catch (error) {
+      if (error instanceof ApiRequestError) {
+        toast.error(getCapsuleErrorMessage(error, "Failed to create capsule."));
       } else {
-        toast.error("Failed to create capsule.");
-        return false;
+        toast.error("Network error. Could not create capsule.");
       }
-    } catch {
-      toast.error("Network error. Could not create capsule.");
       return false;
     }
   }, []);
@@ -104,19 +126,17 @@ export const CapsuleProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const formData = new FormData();
     files.forEach((f) => formData.append("files", f));
     try {
-      const res = await authFetch("/capsules/upload", {
+      return await apiRequest<MediaFile[]>("/capsules/upload", {
         method: "POST",
         body: formData,
-       
       });
-      if (res.ok) {
-        return await res.json(); 
+    } catch (error) {
+      if (error instanceof ApiRequestError) {
+        toast.error(getCapsuleErrorMessage(error, "Failed to upload files."));
+      } else {
+        toast.error("Network error. Could not upload files.");
       }
-      toast.error("Failed to upload files.");
-      return [];
-    } catch {
-      toast.error("Network error. Could not upload files.");
-      return [];
+      throw error;
     }
   }, []);
 

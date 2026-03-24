@@ -67,12 +67,22 @@ const CreateCapsule: React.FC = () => {
     e.preventDefault();
     if (!title || !content || !unlockDate) return;
     setLoading(true);
-    // Step 1 — upload actual files and get real server URLs
-    const [uploadedPhotos, uploadedVideos] = await Promise.all([
-      uploadFiles(photos.map((p) => p.file)),
-      uploadFiles(videos.map((v) => v.file)),
-    ]);
-    // Step 2 — create the capsule with real URLs
+    const hasSelectedMedia = photos.length > 0 || videos.length > 0;
+
+    let uploadedPhotos: Awaited<ReturnType<typeof uploadFiles>> = [];
+    let uploadedVideos: Awaited<ReturnType<typeof uploadFiles>> = [];
+
+    try {
+      // Upload media first. If upload fails, do not attempt capsule creation.
+      [uploadedPhotos, uploadedVideos] = await Promise.all([
+        uploadFiles(photos.map((p) => p.file)),
+        uploadFiles(videos.map((v) => v.file)),
+      ]);
+    } catch {
+      setLoading(false);
+      return;
+    }
+
     const success = await addCapsule({
       title,
       content,
@@ -81,7 +91,9 @@ const CreateCapsule: React.FC = () => {
       weather: "Partly cloudy, 14\u00b0C",
       photos: uploadedPhotos,
       videos: uploadedVideos,
+      requireMedia: hasSelectedMedia,
     });
+
     setLoading(false);
     if (success) navigate("/dashboard");
   };
