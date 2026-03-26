@@ -24,7 +24,7 @@ export interface Capsule {
 export interface CreateCapsuleInput {
   title: string;
   content: string;
-  unlockAt: Date;
+  unlockAt: string;
   shareEmail?: string;
   weather?: string;
   photos: MediaFile[];

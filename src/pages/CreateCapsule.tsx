@@ -83,16 +83,18 @@ const CreateCapsule: React.FC = () => {
       return;
     }
 
-    const success = await addCapsule({
+    const unlockAt = `${format(unlockDate, "yyyy-MM-dd")}T00:00:00`;
+    const payload = {
       title,
       content,
-      unlockAt: unlockDate,
+      unlockAt,
       shareEmail: shareEmail || undefined,
       weather: "Partly cloudy, 14\u00b0C",
       photos: uploadedPhotos,
       videos: uploadedVideos,
       requireMedia: hasSelectedMedia,
-    });
+    };
+    const success = await addCapsule(payload);
 
     setLoading(false);
     if (success) navigate("/dashboard");
