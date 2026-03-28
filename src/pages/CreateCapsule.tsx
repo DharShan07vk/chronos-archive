@@ -1,13 +1,14 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { CalendarIcon, ImagePlus, VideoIcon, X } from "lucide-react";
+import { CalendarIcon, ImagePlus, VideoIcon, X, Mail, AlertCircle } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import BrutalistButton from "@/components/BrutalistButton";
-import { useCapsules } from "@/store/capsuleStore";
+import { useCapsules, Recipient } from "@/store/capsuleStore";
+import { useAuth } from "@/store/authStore";
 import { cn } from "@/lib/utils";
-
+import { toast } from "sonner";
 
 interface LocalMedia {
   file: File;
@@ -16,18 +17,83 @@ interface LocalMedia {
   preview: string;
 }
 
+interface RecipientChip {
+  email: string;
+  error?: string;
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_RECIPIENTS = 50;
+
+const validateEmail = (email: string): boolean => EMAIL_REGEX.test(email);
+
+const normalizeEmail = (email: string): string => email.toLowerCase().trim();
+
 const CreateCapsule: React.FC = () => {
   const navigate = useNavigate();
+  const { userEmail } = useAuth();
   const { addCapsule, uploadFiles } = useCapsules();
+  
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [unlockDate, setUnlockDate] = useState<Date>();
-  const [shareEmail, setShareEmail] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [recipients, setRecipients] = useState<RecipientChip[]>([]);
   const [photos, setPhotos] = useState<LocalMedia[]>([]);
   const [videos, setVideos] = useState<LocalMedia[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showShareError, setShowShareError] = useState<string>("");
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const recipientInputRef = useRef<HTMLInputElement>(null);
+
+  // Deduplicate and validate recipients
+  const uniqueRecipients = useMemo(() => {
+    const seen = new Set<string>();
+    return recipients.filter((r) => {
+      if (seen.has(normalizeEmail(r.email))) return false;
+      seen.add(normalizeEmail(r.email));
+      return true;
+    });
+  }, [recipients]);
+
+  const addRecipient = (email: string) => {
+    const normalized = normalizeEmail(email);
+    
+    if (!normalized) return;
+    if (!validateEmail(normalized)) {
+      setShowShareError("Invalid email format. Please check and try again.");
+      return;
+    }
+    if (normalized === normalizeEmail(userEmail || "")) {
+      setShowShareError("You cannot share a capsule with your own email address.");
+      return;
+    }
+    if (uniqueRecipients.some((r) => normalizeEmail(r.email) === normalized)) {
+      setShowShareError("This email is already in the recipient list.");
+      return;
+    }
+    if (recipients.length >= MAX_RECIPIENTS) {
+      setShowShareError(`You can share with a maximum of ${MAX_RECIPIENTS} recipients.`);
+      return;
+    }
+    
+    setRecipients((prev) => [...prev, { email: normalized, canReshare: true }]);
+    setRecipient("");
+    setShowShareError("");
+  };
+
+  const removeRecipient = (index: number) => {
+    setRecipients((prev) => prev.filter((_, i) => i !== index));
+    setShowShareError("");
+  };
+
+  const handleRecipientKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addRecipient(e.currentTarget.value);
+    }
+  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -65,7 +131,33 @@ const CreateCapsule: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !content || !unlockDate) return;
+    if(!title){
+      toast.error("Title was Missing")
+      return
+    }
+    if(!content){
+      toast.error("Content was Missing")
+      return
+    }
+    if(!unlockDate){
+      toast.error("Memory Unlocking Date was Missing")
+    }
+    
+    // Client-side validation
+    if (recipients.length > MAX_RECIPIENTS) {
+      setShowShareError(`Maximum ${MAX_RECIPIENTS} recipients allowed.`);
+      recipientInputRef.current?.focus();
+      return;
+    }
+
+    // Validate all recipient emails
+    const invalidEmails = recipients.filter((r) => !validateEmail(r.email));
+    if (invalidEmails.length > 0) {
+      setShowShareError("One or more recipient emails are invalid.");
+      recipientInputRef.current?.focus();
+      return;
+    }
+
     setLoading(true);
     const hasSelectedMedia = photos.length > 0 || videos.length > 0;
 
@@ -88,16 +180,28 @@ const CreateCapsule: React.FC = () => {
       title,
       content,
       unlockAt,
-      shareEmail: shareEmail || undefined,
-      weather: "Partly cloudy, 14\u00b0C",
+      // Support new recipients array format
+      ...(uniqueRecipients.length > 0 && {
+        recipients: uniqueRecipients as Recipient[],
+      }),
+      // Legacy support: if only one recipient, also send as shareEmail
+      ...(uniqueRecipients.length === 1 && {
+        shareEmail: uniqueRecipients[0].email,
+      }),
       photos: uploadedPhotos,
       videos: uploadedVideos,
       requireMedia: hasSelectedMedia,
     };
+    console.log(`[CreateCapsule] Submitting payload:`, payload);
     const success = await addCapsule(payload);
 
     setLoading(false);
-    if (success) navigate("/dashboard");
+    if (success) {
+      console.log(`[CreateCapsule] Success! Navigating to dashboard...`);
+      navigate("/dashboard");
+    } else {
+      console.error(`[CreateCapsule] addCapsule returned false`);
+    }
   };
 
   return (
@@ -150,7 +254,7 @@ const CreateCapsule: React.FC = () => {
           </div>
 
           {/* Photo Upload */}
-          <div>
+          <div id="media-section">
             <label className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground block mb-2">
               Photos (optional)
             </label>
@@ -249,7 +353,7 @@ const CreateCapsule: React.FC = () => {
                   {unlockDate ? format(unlockDate, "PPP") : "Select unlock date..."}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 border-2 border-foreground rounded-none brutalist-shadow" align="start">
+              <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
                   selected={unlockDate}
@@ -265,24 +369,84 @@ const CreateCapsule: React.FC = () => {
             </Popover>
           </div>
 
-          {/* Share Email */}
+          {/* Recipients (Multi-share) */}
           <div>
             <label className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground block mb-2">
-              Share via Email (optional)
+              🤝 Share With (optional)
             </label>
-            <input
-              type="email"
-              value={shareEmail}
-              onChange={(e) => setShareEmail(e.target.value)}
-              placeholder="friend@example.com"
-              className="brutalist-input w-full text-foreground"
-            />
+            <div className="flex gap-2 mb-2">
+              <div className="flex-1 relative">
+                <input
+                  ref={recipientInputRef}
+                  type="email"
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  onKeyDown={handleRecipientKeyDown}
+                  placeholder="Enter recipient email and press Enter..."
+                  className={cn(
+                    "brutalist-input w-full text-foreground pl-8",
+                    showShareError && recipients.length === 0 && "border-red-500 border-2"
+                  )}
+                />
+                <Mail className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              </div>
+              <button
+                type="button"
+                onClick={() => addRecipient(recipient)}
+                disabled={!recipient || recipients.length >= MAX_RECIPIENTS}
+                className="brutalist-input px-4 py-2 font-mono text-sm uppercase border-2 border-foreground disabled:opacity-50"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* Validation Error */}
+            {showShareError && (
+              <div className="mb-3 p-3 bg-red-50 border-2 border-red-400 flex gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="font-mono text-xs text-red-700">{showShareError}</p>
+              </div>
+            )}
+
+            {/* Recipients List */}
+            {uniqueRecipients.length > 0 && (
+              <div className="space-y-2">
+                <p className="font-mono text-xs text-muted-foreground">
+                  {uniqueRecipients.length} / {MAX_RECIPIENTS} recipients
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {uniqueRecipients.map((r, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 px-3 py-1 bg-foreground text-background border-2 border-foreground font-mono text-xs uppercase"
+                    >
+                      <span>{r.email}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeRecipient(i)}
+                        className="hover:opacity-70 transition-opacity"
+                        title="Remove recipient"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Submit */}
-          <BrutalistButton type="submit" variant="accent" fullWidth className="text-xl py-5 mt-4" disabled={loading}>
-            {loading ? "UPLOADING & ARCHIVING..." : "ARCHIVE THIS MOMENT"}
-          </BrutalistButton>
+          <div className="pt-6 border-t-2 border-foreground">
+            <BrutalistButton
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 font-heading text-lg uppercase tracking-widest"
+              variant="accent"
+            >
+              {loading ? "Creating..." : "Seal Capsule"}
+            </BrutalistButton>
+          </div>
         </form>
       </div>
     </div>
