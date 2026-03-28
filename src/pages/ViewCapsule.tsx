@@ -84,10 +84,6 @@ const ViewCapsule: React.FC = () => {
 
             <div className="space-y-6">
               <div className="border-b border-foreground pb-3">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Document ID</span>
-                <span className="font-mono text-lg">#{capsule.id}</span>
-              </div>
-              <div className="border-b border-foreground pb-3">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground block">Title</span>
                 <span className="font-heading text-2xl uppercase">{capsule.title}</span>
               </div>
